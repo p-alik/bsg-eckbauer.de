@@ -1,0 +1,3 @@
+# local WordPress dev runtime dirs (created by `nix run`)
+.wordpress/
+.mysql/
