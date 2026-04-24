@@ -18,7 +18,6 @@
         zip
         curl
         mbstring
-        xml
         intl
         opcache
       ]));
@@ -90,7 +89,7 @@
             --user="$(id -un)" &
 
           echo -n "    Waiting for MariaDB..."
-          for i in $(seq 1 30); do
+          for _ in $(seq 1 30); do
             mysqladmin -h "$DB_HOST" -P "$DB_PORT" -u root \
               --connect-timeout=1 ping 2>/dev/null | grep -q alive && break
             printf '.'
@@ -136,19 +135,21 @@
         fi
 
         # ── Theme symlink ────────────────────────────────────────────────────
-        THEME_LINK="$WP_DIR/wp-content/themes/eckbauer-v3"
-        THEME_SRC="$REPO_ROOT/v3"
+        THEME_LINK="$WP_DIR/wp-content/themes/eckbauer"
+        THEME_SRC="$REPO_ROOT/themes/eckbauer"
 
-        if [ ! -e "$THEME_LINK" ]; then
-          echo "==> Symlinking theme..."
+        if [ ! -L "$THEME_LINK" ]; then
+          echo "==> Symlinking eckbauer child theme..."
+          rm -rf "$THEME_LINK"
           ln -sf "$THEME_SRC" "$THEME_LINK"
         fi
 
-        wp theme activate eckbauer-v3 --path="$WP_DIR"
+        wp theme activate eckbauer --path="$WP_DIR"
         wp rewrite structure '/%postname%/' --path="$WP_DIR" --hard
         wp rewrite flush --hard --path="$WP_DIR"
 
         # ── Router file ──────────────────────────────────────────────────────
+        rm -f "$WP_DIR/wp-router.php"
         cp "${wpRouter}" "$WP_DIR/wp-router.php"
 
         # ── Cleanup on exit ──────────────────────────────────────────────────
@@ -159,12 +160,14 @@
         }
         trap cleanup EXIT INT TERM
 
+        _w=$(( ''${#WP_URL} + 26 ))
+        _sep=$(printf '─%.0s' $(seq 1 "$_w"))
         echo ""
-        echo "┌─────────────────────────────────────────────┐"
-        echo "│  WordPress running at  $WP_URL           │"
-        echo "│  Admin: $WP_URL/wp-admin             │"
-        echo "│  Credentials: admin / admin                 │"
-        echo "└─────────────────────────────────────────────┘"
+        echo "┌''${_sep}┐"
+        printf "│  %-''$((_w-4))s  │\n" "WordPress running at  $WP_URL"
+        printf "│  %-''$((_w-4))s  │\n" "Admin: $WP_URL/wp-admin"
+        printf "│  %-''$((_w-4))s  │\n" "Credentials: admin / admin"
+        echo "└''${_sep}┘"
         echo ""
 
         # ── Start PHP built-in server ────────────────────────────────────────
@@ -172,19 +175,43 @@
       '';
     };
 
-  in {
-    packages.${system}.default = wpDev;
+    # ── theme-zip: package the child theme for WP admin upload ──────────────
+    themeZip = pkgs.writeShellApplication {
+      name = "theme-zip";
+      runtimeInputs = [ pkgs.zip ];
+      text = ''
+        REPO_ROOT="$(pwd)"
+        OUT="$REPO_ROOT/eckbauer.zip"
+        rm -f "$OUT"
+        cd "$REPO_ROOT/themes"
+        zip -r "$OUT" eckbauer
+        echo "==> Created $OUT — upload via WP Admin → Appearance → Themes → Add New"
+      '';
+    };
 
-    apps.${system}.default = {
-      type = "app";
-      program = "${wpDev}/bin/wp-dev";
+  in {
+    packages.${system} = {
+      default = wpDev;
+      theme-zip = themeZip;
+    };
+
+    apps.${system} = {
+      default = {
+        type = "app";
+        program = "${wpDev}/bin/wp-dev";
+      };
+      theme-zip = {
+        type = "app";
+        program = "${themeZip}/bin/theme-zip";
+      };
     };
 
     devShells.${system}.default = pkgs.mkShell {
-      buildInputs = [ php pkgs.mariadb pkgs.wp-cli ];
+      buildInputs = [ php pkgs.mariadb pkgs.wp-cli pkgs.zip ];
       shellHook = ''
         echo "WordPress dev tools in PATH: php, mysql, wp"
         echo "Run 'nix run' to start the local server, or 'wp-dev' inside this shell."
+        echo "Run 'nix run .#theme-zip' to package the child theme for upload."
       '';
     };
   };
