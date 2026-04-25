@@ -51,12 +51,20 @@
         WP_DIR="''${WP_DIR:-$REPO_ROOT/.wordpress}"
         MYSQL_DIR="''${MYSQL_DIR:-$REPO_ROOT/.mysql}"
         WP_PORT="''${WP_PORT:-8080}"
+        WP_BIND="''${WP_BIND:-0.0.0.0}"
         DB_PORT=3307          # private port, avoids conflicts with system MySQL
         DB_HOST="127.0.0.1"
         DB_NAME=wordpress
         DB_USER=wordpress
         DB_PASS=wordpress
-        WP_URL="http://localhost:$WP_PORT"
+        # Persist WP_HOST across runs: env var → saved file → localhost
+        WP_HOST_FILE="$REPO_ROOT/.wp-host"
+        if [ -n "''${WP_HOST:-}" ]; then
+          echo "$WP_HOST" > "$WP_HOST_FILE"
+        else
+          WP_HOST="$(cat "$WP_HOST_FILE" 2>/dev/null || echo localhost)"
+        fi
+        WP_URL="http://''${WP_HOST}:$WP_PORT"
         MYSQL_PID="$MYSQL_DIR/mysqld.pid"
         MYSQL_SOCK="$MYSQL_DIR/mysqld.sock"
 
@@ -123,7 +131,9 @@
             --dbuser="$DB_USER" \
             --dbpass="$DB_PASS" \
             --dbhost="$DB_HOST:$DB_PORT"
+        fi
 
+        if ! wp core is-installed --path="$WP_DIR" 2>/dev/null; then
           echo "==> Installing WordPress..."
           wp core install --path="$WP_DIR" \
             --url="$WP_URL" \
@@ -145,6 +155,18 @@
         fi
 
         wp theme activate eckbauer --path="$WP_DIR"
+
+        # Pin WP_HOME / WP_SITEURL as PHP constants in wp-config.php so they
+        # take absolute precedence over DB options and any plugin option locks.
+        wp config set WP_HOME    "$WP_URL" --path="$WP_DIR"
+        wp config set WP_SITEURL "$WP_URL" --path="$WP_DIR"
+
+        # Rewrite any stale localhost URLs left over from a previous import
+        if [ "$WP_HOST" != "localhost" ]; then
+          wp search-replace "http://localhost:$WP_PORT" "$WP_URL" \
+            --path="$WP_DIR" --all-tables --report-changed-only
+        fi
+
         wp rewrite structure '/%postname%/' --path="$WP_DIR" --hard
         wp rewrite flush --hard --path="$WP_DIR"
 
@@ -171,7 +193,7 @@
         echo ""
 
         # ── Start PHP built-in server ────────────────────────────────────────
-        php -S "localhost:$WP_PORT" -t "$WP_DIR" "$WP_DIR/wp-router.php"
+        php -S "$WP_BIND:$WP_PORT" -t "$WP_DIR" "$WP_DIR/wp-router.php"
       '';
     };
 
@@ -189,10 +211,172 @@
       '';
     };
 
+    # ── import-backup: restore an UpdraftPlus backup into the local WP instance
+    importBackup = pkgs.writeShellApplication {
+      name = "import-backup";
+      runtimeInputs = [ pkgs.gzip pkgs.unzip pkgs.mariadb pkgs.wp-cli pkgs.coreutils ];
+      text = ''
+        REPO_ROOT="$(pwd)"
+        BACKUP_DIR="''${1:-$REPO_ROOT}"
+        WP_DIR="''${WP_DIR:-$REPO_ROOT/.wordpress}"
+        MYSQL_DIR="''${MYSQL_DIR:-$REPO_ROOT/.mysql}"
+        WP_PORT="''${WP_PORT:-8080}"
+        # Persist WP_HOST across runs: env var → saved file → localhost
+        WP_HOST_FILE="$REPO_ROOT/.wp-host"
+        if [ -n "''${WP_HOST:-}" ]; then
+          echo "$WP_HOST" > "$WP_HOST_FILE"
+        else
+          WP_HOST="$(cat "$WP_HOST_FILE" 2>/dev/null || echo localhost)"
+        fi
+        WP_URL="http://''${WP_HOST}:$WP_PORT"
+        PROD_URL="https://bsg-eckbauer.de/v2"
+        DB_PORT=3307
+        DB_HOST="127.0.0.1"
+        MYSQL_SOCK="$MYSQL_DIR/mysqld.sock"
+
+        if [ ! -f "$WP_DIR/wp-config.php" ]; then
+          echo "ERROR: $WP_DIR/wp-config.php not found." >&2
+          echo "       Run 'nix run' once to bootstrap WordPress (then Ctrl-C), then re-run this script." >&2
+          exit 1
+        fi
+
+        # ── Ensure MariaDB is running ─────────────────────────────────────────
+        if ! mysqladmin -h "$DB_HOST" -P "$DB_PORT" -u root \
+               --connect-timeout=1 ping 2>/dev/null | grep -q alive; then
+          echo "==> Starting MariaDB on port $DB_PORT..."
+          mysqld \
+            --datadir="$MYSQL_DIR" \
+            --socket="$MYSQL_SOCK" \
+            --port="$DB_PORT" \
+            --bind-address="$DB_HOST" \
+            --log-error="$MYSQL_DIR/error.log" \
+            --skip-networking=0 \
+            --user="$(id -un)" &
+          MYSQLD_PID=$!
+          echo -n "    Waiting for MariaDB..."
+          for _ in $(seq 1 30); do
+            mysqladmin -h "$DB_HOST" -P "$DB_PORT" -u root \
+              --connect-timeout=1 ping 2>/dev/null | grep -q alive && break
+            printf '.'
+            sleep 1
+          done
+          echo ""
+          if ! mysqladmin -h "$DB_HOST" -P "$DB_PORT" -u root \
+                  --connect-timeout=1 ping 2>/dev/null | grep -q alive; then
+            echo "ERROR: MariaDB did not start. Check $MYSQL_DIR/error.log" >&2
+            exit 1
+          fi
+          # Shut down the MariaDB we started when the script exits
+          trap 'mysqladmin -h "$DB_HOST" -P "$DB_PORT" -u root shutdown 2>/dev/null || kill "$MYSQLD_PID" 2>/dev/null || true' EXIT INT TERM
+        fi
+
+        cd "$BACKUP_DIR"
+        echo "==> Scanning $BACKUP_DIR for UpdraftPlus backup files..."
+
+        shopt -s nullglob
+        db_files=(backup_*-db.gz)
+        themes_files=(backup_*-themes.zip)
+        uploads_files=(backup_*-uploads.zip)
+        plugins_files=(backup_*-plugins.zip)
+        shopt -u nullglob
+
+        DB_GZ="''${db_files[0]:-}"
+        THEMES_ZIP="''${themes_files[0]:-}"
+        UPLOADS_ZIP="''${uploads_files[0]:-}"
+        PLUGINS_ZIP="''${plugins_files[0]:-}"
+
+        if [ -z "$DB_GZ" ];      then echo "ERROR: no database backup (backup_*_db.gz) found in $BACKUP_DIR"      >&2; exit 1; fi
+        if [ -z "$THEMES_ZIP" ]; then echo "ERROR: no themes backup (backup_*_themes.zip) found in $BACKUP_DIR"   >&2; exit 1; fi
+        if [ -z "$UPLOADS_ZIP" ];then echo "ERROR: no uploads backup (backup_*_uploads.zip) found in $BACKUP_DIR" >&2; exit 1; fi
+
+        echo "    db      : $DB_GZ"
+        echo "    themes  : $THEMES_ZIP"
+        echo "    uploads : $UPLOADS_ZIP"
+        echo "    plugins : ''${PLUGINS_ZIP:-<none — will be skipped>}"
+        echo ""
+        echo "WARNING: this will overwrite the local WordPress database."
+        read -r -p "Continue? [y/N] " confirm
+        case "$confirm" in
+          [yY]*) ;;
+          *) echo "Aborted."; exit 0 ;;
+        esac
+
+        # 1 — Themes
+        echo ""
+        echo "==> [1/7] Restoring themes..."
+        unzip -qo "$THEMES_ZIP" -d "$WP_DIR/wp-content/"
+
+        # 2 — Database
+        echo "==> [2/7] Importing database..."
+        DB_SQL="''${DB_GZ%.gz}.sql"
+        gunzip -kf "$DB_GZ"
+        mv "''${DB_GZ%.gz}" "$DB_SQL"
+        wp db import "$DB_SQL" --path="$WP_DIR"
+        rm -f "$DB_SQL"
+
+        echo "==> [2/7] Rewriting URLs: $PROD_URL -> $WP_URL..."
+        wp search-replace "$PROD_URL" "$WP_URL" \
+          --path="$WP_DIR" \
+          --all-tables \
+          --report-changed-only
+
+        # Clean up localhost URLs left over from any previous botched import
+        if [ "$WP_HOST" != "localhost" ]; then
+          echo "==> [2/7] Rewriting stale localhost URLs -> $WP_URL..."
+          wp search-replace "http://localhost:$WP_PORT" "$WP_URL" \
+            --path="$WP_DIR" \
+            --all-tables \
+            --report-changed-only
+        fi
+
+        # 3 — Uploads
+        echo "==> [3/7] Restoring uploads..."
+        unzip -qo "$UPLOADS_ZIP" -d "$WP_DIR/wp-content/"
+
+        # 4 — Plugins (optional)
+        if [ -n "$PLUGINS_ZIP" ]; then
+          echo "==> [4/7] Restoring plugins..."
+          unzip -qo "$PLUGINS_ZIP" -d "$WP_DIR/wp-content/"
+        else
+          echo "==> [4/7] No plugins archive found — skipping."
+        fi
+
+        # 5 — Deactivate SSL plugin, fix URLs
+        echo "==> [5/7] Deactivating SSL plugin and fixing URLs..."
+        wp plugin deactivate better-wp-security --path="$WP_DIR" 2>/dev/null || true
+        # Pin as PHP constants — takes precedence over DB options and plugin locks
+        wp config set WP_HOME    "$WP_URL" --path="$WP_DIR"
+        wp config set WP_SITEURL "$WP_URL" --path="$WP_DIR"
+
+        # 6 — Rewrite rules
+        echo "==> [6/7] Flushing rewrite rules..."
+        wp rewrite structure '/%postname%/' --path="$WP_DIR" --hard
+        wp rewrite flush --hard --path="$WP_DIR"
+
+        # 7 — Header image + page cache
+        # The eckbauer child theme stores its own theme_mods separately from the
+        # parent twentyten. After a DB import that entry has no header_image key,
+        # causing Twenty Ten to fall back to its bundled default (path.jpg).
+        # Activate eckbauer first so the mod is written to theme_mods_eckbauer,
+        # not theme_mods_twentyten (which is what the production DB restores as active).
+        echo "==> [7/7] Setting header image and clearing page cache..."
+        wp theme activate eckbauer --path="$WP_DIR"
+        wp theme mod set header_image \
+          "$WP_URL/wp-content/uploads/2019/01/cropped-ofolinimagagmoeb-1.png" \
+          --path="$WP_DIR"
+        rm -f "$WP_DIR/wp-content/cache/wpo-cache/''${WP_HOST}/index.html" \
+              "$WP_DIR/wp-content/cache/wpo-cache/''${WP_HOST}/index.html.gz"
+
+        echo ""
+        echo "==> Import complete. Run 'nix run' to start WordPress at $WP_URL"
+      '';
+    };
+
   in {
     packages.${system} = {
       default = wpDev;
       theme-zip = themeZip;
+      import-backup = importBackup;
     };
 
     apps.${system} = {
@@ -204,6 +388,10 @@
         type = "app";
         program = "${themeZip}/bin/theme-zip";
       };
+      import-backup = {
+        type = "app";
+        program = "${importBackup}/bin/import-backup";
+      };
     };
 
     devShells.${system}.default = pkgs.mkShell {
@@ -212,6 +400,7 @@
         echo "WordPress dev tools in PATH: php, mysql, wp"
         echo "Run 'nix run' to start the local server, or 'wp-dev' inside this shell."
         echo "Run 'nix run .#theme-zip' to package the child theme for upload."
+        echo "Run 'nix run .#import-backup [DIR]' to restore an UpdraftPlus backup."
       '';
     };
   };

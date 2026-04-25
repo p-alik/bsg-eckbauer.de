@@ -6,7 +6,7 @@ Website of **[Berliner Schachgesellschaft 1827 Eckbauer e.V.](https://bsg-eckbau
 
 ```
 themes/
-├── v3/          ← WordPress theme "Eckbauer v3" (legacy)
+├── v3/          ← WordPress theme "Eckbauer v3" (WIP)
 └── eckbauer/    ← Child theme of Twenty Ten (active) — CSS/JS customisations
 flake.nix        ← Nix flake: local WordPress dev environment
 flake.lock
@@ -75,92 +75,41 @@ UpdraftPlus splits a backup into several zip files:
 ```
 backup_YYYY-MM-DD-HHMM_<hash>_db.gz          ← database
 backup_YYYY-MM-DD-HHMM_<hash>_uploads.zip    ← wp-content/uploads
-backup_YYYY-MM-DD-HHMM_<hash>_plugins.zip    ← wp-content/plugins
+backup_YYYY-MM-DD-HHMM_<hash>_plugins.zip    ← wp-content/plugins  (optional)
 backup_YYYY-MM-DD-HHMM_<hash>_themes.zip     ← wp-content/themes
 backup_YYYY-MM-DD-HHMM_<hash>_others.zip     ← everything else
 ```
 
-### Prerequisites
+### Quick path
 
-`wp db import` requires a working `wp-config.php` to know the database credentials.
-Run `nix run` once to let it bootstrap WordPress, then stop it with `Ctrl-C`:
+Bootstrap WordPress first (the DB must exist before import):
 
 ```bash
 nix run    # bootstraps .wordpress/ and .mysql/, then Ctrl-C to stop
 ```
 
-Open a dev shell for the remaining steps:
+Place the backup files in any directory, then run:
 
 ```bash
-nix develop
+nix run .#import-backup /path/to/backup/files
 ```
 
-### 1 — Restore the original theme
+The directory argument defaults to the current directory.
+The script will list the files it found and ask for confirmation before touching the database.
 
-Extract the themes archive first so the original theme is present before the database
-is imported. `nix run` creates a symlink for `eckbauer-v3`; the zip may overwrite it
-with real files — that is fine for reviewing the original, and the symlink can be
-restored later when developing.
+When done, `nix run` again to start the server and verify at <http://localhost:8080>.
 
-The zip contains a `themes/` directory at its root, so unzip one level up into
-`wp-content/` — not into `wp-content/themes/` — to avoid double-nesting:
+### What the script does
 
-```bash
-unzip backup_*_themes.zip -d .wordpress/wp-content/
-```
-
-### 2 — Restore the database
-
-UpdraftPlus stores the database dump as a `.gz` file. After decompression the file has
-no `.sql` extension, so it must be renamed before `wp db import` will accept it.
-The `#`-style line comments used by UpdraftPlus are valid MariaDB/MySQL syntax —
-no further pre-processing is needed.
-
-```bash
-gunzip -k backup_*_db.gz            # produces backup_*_db  (no extension)
-mv backup_*_db{,.sql}               # rename to backup_*_db.sql
-
-wp db import backup_*_db.sql --path=.wordpress
-wp search-replace 'https://bsg-eckbauer.de/v2' 'http://localhost:8080' \
-  --path=.wordpress \
-  --all-tables \
-  --report-changed-only
-```
-
-### 3 — Restore uploads
-
-The zip contains an `uploads/` directory at its root — unzip into `wp-content/`,
-not into `wp-content/uploads/`:
-
-```bash
-unzip backup_*_uploads.zip -d .wordpress/wp-content/
-```
-
-### 4 — Restore plugins (optional)
-
-Same pattern — unzip into `wp-content/`:
-
-```bash
-unzip backup_*_plugins.zip -d .wordpress/wp-content/
-```
-
-### 5 — Deactivate SSL-forcing plugins and fix URLs
-
-After restoring plugins, security plugins (e.g. `better-wp-security` / iThemes Security)
-may switch `siteurl` and `home` to `https`, causing the PHP built-in server to receive
-SSL handshake requests it cannot handle. Deactivate the plugin and reset the URLs:
-
-```bash
-wp plugin deactivate better-wp-security --path=.wordpress
-wp option update siteurl "http://localhost:8080" --path=.wordpress
-wp option update home    "http://localhost:8080" --path=.wordpress
-```
-
-### 6 — Flush rewrite rules
-
-```bash
-wp rewrite flush --hard --path=.wordpress
-```
+| Step | Action |
+|------|--------|
+| 1 | Extracts `themes.zip` → `.wordpress/wp-content/` |
+| 2 | Decompresses and imports the DB, then rewrites `https://bsg-eckbauer.de/v2` → `http://localhost:8080` in all tables |
+| 3 | Extracts `uploads.zip` → `.wordpress/wp-content/` |
+| 4 | Extracts `plugins.zip` if present, skips otherwise |
+| 5 | Deactivates `better-wp-security` (prevents https redirect loop), resets `siteurl`/`home` |
+| 6 | Flushes rewrite rules |
+| 7 | Sets `header_image` on the `eckbauer` theme mods (the child theme has its own `theme_mods` entry separate from parent `twentyten`; without this Twenty Ten falls back to its bundled `path.jpg`), then clears the WP-Optimize page cache |
 
 ### Switch to the repo theme (development)
 
@@ -172,10 +121,6 @@ rm -rf .wordpress/wp-content/themes/eckbauer-v3
 ln -sf "$(pwd)/themes/v3" .wordpress/wp-content/themes/eckbauer-v3
 wp theme activate eckbauer-v3 --path=.wordpress
 ```
-
-### 5 — Verify
-
-Open <http://localhost:8080> — the site should look identical to the live version. Log in at <http://localhost:8080/wp-admin> with the credentials from the backup (or reset with `wp user update admin --user_pass=admin --path=.wordpress`).
 
 ---
 
@@ -205,7 +150,7 @@ Upload `eckbauer.zip` via **WP Admin → Appearance → Themes → Add New → U
 
 ---
 
-## Theme — Eckbauer v3 (legacy)
+## Theme — Eckbauer v3 (WIP)
 
 Classic dark-charcoal & gold WordPress theme (no longer active).
 
