@@ -8,3 +8,338 @@
 */
 
 /* ── Custom styles ─────────────────────────────────────────────────────────── */
+
+/* ── Variables ─────────────────────────────────────────────────────────────── */
+:root {
+  --gold:      #c8a84b;
+  --gold-dark: #a0843a;
+  --charcoal:  #1e1e1e;
+  --border:    #ddd;
+}
+
+/* ── Responsive wrapper ─────────────────────────────────────────────────────── */
+/* TwentyTen hardcodes width:940px — switch to fluid max-width */
+#wrapper {
+  width: 100% !important;
+  max-width: 960px !important;
+  box-sizing: border-box;
+}
+
+/* ── Header / Branding ──────────────────────────────────────────────────────── */
+/* Prevent header banner image from overflowing on narrow viewports */
+#branding img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Hide the text title/description when the banner image is present
+   (TwentyTen normally does this via JS; belt-and-suspenders CSS fallback) */
+#site-title a,
+#site-description {
+  text-indent: -9999px;
+  overflow: hidden;
+  display: block;
+  height: 0;
+}
+
+/* ── Post list ──────────────────────────────────────────────────────────────── */
+.entry-title {
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+.entry-title a:link,
+.entry-title a:visited {
+  color: #111;
+}
+
+.entry-title a:hover {
+  color: var(--gold-dark);
+  text-decoration: none;
+}
+
+/* Post meta – "Posted on … by …" */
+.entry-meta {
+  font-size: 12px;
+  color: #888;
+}
+
+.entry-meta a {
+  color: #555;
+}
+
+.entry-meta a:hover {
+  color: var(--gold-dark);
+}
+
+/* Entry footer – category / comment links */
+.entry-utility {
+  font-size: 12px;
+  color: #999;
+  border-top: 1px solid var(--border);
+  margin-top: 10px;
+  padding-top: 6px;
+}
+
+.entry-utility a {
+  color: var(--gold-dark);
+}
+
+.entry-utility a:hover {
+  color: var(--charcoal);
+  text-decoration: underline;
+}
+
+/* Pagination ("Older posts / Newer posts") */
+.navigation {
+  font-size: 13px;
+  margin: 16px 0;
+}
+
+.navigation a:link,
+.navigation a:visited {
+  color: var(--gold-dark);
+  text-decoration: none;
+  border-bottom: 1px solid var(--gold-dark);
+}
+
+.navigation a:hover {
+  color: var(--charcoal);
+  border-bottom-color: var(--charcoal);
+}
+
+/* ── Sidebar widgets ────────────────────────────────────────────────────────── */
+.widget-title {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #222;
+  border-bottom: 2px solid var(--charcoal);
+  padding-bottom: 5px;
+  margin-bottom: 10px;
+}
+
+.widget-area a:link,
+.widget-area a:visited {
+  color: #333;
+}
+
+.widget-area a:hover {
+  color: var(--gold-dark);
+  text-decoration: none;
+}
+
+/* Search widget */
+.widget_search #s {
+  border: 1px solid var(--border);
+  padding: 5px 8px;
+  font-size: 13px;
+}
+
+.widget_search #searchsubmit {
+  background: var(--charcoal);
+  color: #e8e0cc;
+  border: none;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.widget_search #searchsubmit:hover {
+  background: var(--gold-dark);
+  color: var(--charcoal);
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────────────── */
+#footer {
+  background: var(--charcoal);
+}
+
+#colophon {
+  color: #aaa;
+  font-size: 12px;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#site-info a,
+#site-generator a {
+  color: var(--gold);
+  text-decoration: none;
+}
+
+#site-info a:hover,
+#site-generator a:hover {
+  color: #fff;
+}
+
+/* ── Hamburger button ───────────────────────────────────────────────────────── */
+/* Both are mobile-only — hidden on desktop */
+.menu-toggle,
+.submenu-toggle {
+  display: none;
+}
+
+.menu-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 10px 14px;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.menu-toggle-bar {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: #e8e0cc;
+  transition: transform 0.2s, opacity 0.2s;
+}
+
+/* Animate bars into an X when open */
+.menu-toggle[aria-expanded="true"] .menu-toggle-bar:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.menu-toggle[aria-expanded="true"] .menu-toggle-bar:nth-child(2) {
+  opacity: 0;
+}
+.menu-toggle[aria-expanded="true"] .menu-toggle-bar:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden;
+  }
+
+  #wrapper {
+    padding: 0 !important;
+    margin-top: 0 !important;
+  }
+
+  /* Collapse TwentyTen's fixed-width floats that overflow the viewport */
+  #site-title,
+  #site-description {
+    width: auto !important;
+    float: none !important;
+  }
+
+  /* TwentyTen hardcodes #main at 940px with a right-sidebar margin on #content */
+  #main {
+    width: 100% !important;
+    padding: 20px 0 0 !important;
+  }
+
+  #content {
+    margin: 0 !important;
+    padding: 0 12px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Override TwentyTen fixed widths */
+  #access {
+    width: 100% !important;
+    float: none !important;
+    clear: both;          /* clear the floated header image from #branding */
+    position: relative;
+  }
+
+  #access .menu-header,
+  div.menu {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+
+  /* Show hamburger button */
+  .menu-toggle {
+    display: flex;
+  }
+
+  /* Hide nav by default; reveal via .nav-open */
+  #access .menu-header {
+    display: none !important;
+    background: var(--charcoal);
+  }
+
+  #access .menu-header.nav-open {
+    display: block !important;
+  }
+
+  /* Stack menu items vertically */
+  #access .menu-header li,
+  div.menu li {
+    display: block !important;
+    float: none !important;
+    width: 100%;
+  }
+
+  #access ul li a {
+    font-size: 12px;
+    padding: 8px 14px;
+    display: block;
+    line-height: 1.4;
+  }
+
+  /* Sub-menus: hidden by default, toggled via JS tap */
+  #access ul ul {
+    position: static !important;
+    float: none !important;      /* TwentyTen sets float:left on ul ul — cancel it */
+    display: none !important;
+    width: auto !important;
+    padding-left: 16px;
+    border-top: none;
+    border-left: 2px solid var(--gold);
+    box-shadow: none;
+  }
+
+  /* Parent items: flex row so link and toggle sit side by side */
+  #access ul li.has-submenu {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  #access ul li.has-submenu > a {
+    flex: 1;
+    display: block;
+  }
+
+  /* Submenu takes full row when expanded */
+  #access ul li.has-submenu > ul {
+    flex-basis: 100%;
+  }
+
+  /* Submenu expand button */
+  .submenu-toggle {
+    display: block;
+    background: none;
+    border: none;
+    border-left: 1px solid #444;
+    color: #e8e0cc;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 0 14px;
+    flex-shrink: 0;
+  }
+
+  /* Stack the two-column layout (content + sidebar) */
+  #content,
+  #primary,
+  #secondary {
+    float: none !important;
+    width: 100% !important;
+  }
+
+  #secondary {
+    border-top: 2px solid var(--charcoal);
+    margin-top: 16px;
+    padding-top: 16px;
+  }
+}
