@@ -170,6 +170,19 @@
         wp rewrite structure '/%postname%/' --path="$WP_DIR" --hard
         wp rewrite flush --hard --path="$WP_DIR"
 
+        # Ensure a known admin password on every start (survives DB imports)
+        echo "==> Resetting administrator credentials..."
+        ADMIN_LOGIN="$(wp user list --role=administrator --field=user_login --path="$WP_DIR" 2>/dev/null | head -1)"
+        if [ -n "$ADMIN_LOGIN" ]; then
+          echo "    Resetting password for: ''${ADMIN_LOGIN}"
+          wp user update "$ADMIN_LOGIN" --user_pass=admin --skip-email --path="$WP_DIR"
+        else
+          echo "    No administrator found — creating local-admin/admin"
+          ADMIN_LOGIN=local-admin
+          wp user create local-admin admin@example.com --role=administrator --user_pass=admin \
+            --skip-email --path="$WP_DIR"
+        fi
+
         # ── Router file ──────────────────────────────────────────────────────
         rm -f "$WP_DIR/wp-router.php"
         cp "${wpRouter}" "$WP_DIR/wp-router.php"
@@ -182,13 +195,14 @@
         }
         trap cleanup EXIT INT TERM
 
-        _w=$(( ''${#WP_URL} + 26 ))
+        _creds="Credentials: ''${ADMIN_LOGIN} / admin"
+        _w=$(( ''${#WP_URL} + 26 > ''${#_creds} + 4 ? ''${#WP_URL} + 26 : ''${#_creds} + 4 ))
         _sep=$(printf '─%.0s' $(seq 1 "$_w"))
         echo ""
         echo "┌''${_sep}┐"
         printf "│  %-''$((_w-4))s  │\n" "WordPress running at  $WP_URL"
         printf "│  %-''$((_w-4))s  │\n" "Admin: $WP_URL/wp-admin"
-        printf "│  %-''$((_w-4))s  │\n" "Credentials: admin / admin"
+        printf "│  %-''$((_w-4))s  │\n" "$_creds"
         echo "└''${_sep}┘"
         echo ""
 
@@ -341,12 +355,18 @@
           echo "==> [4/7] No plugins archive found — skipping."
         fi
 
-        # 5 — Deactivate SSL plugin, fix URLs
+        # 5 — Deactivate SSL plugin, fix URLs, reset admin password
         echo "==> [5/7] Deactivating SSL plugin and fixing URLs..."
         wp plugin deactivate better-wp-security --path="$WP_DIR" 2>/dev/null || true
         # Pin as PHP constants — takes precedence over DB options and plugin locks
         wp config set WP_HOME    "$WP_URL" --path="$WP_DIR"
         wp config set WP_SITEURL "$WP_URL" --path="$WP_DIR"
+        # Reset the first administrator's password to a known local value
+        ADMIN_LOGIN="$(wp user list --role=administrator --field=user_login --path="$WP_DIR" | head -1)"
+        if [ -n "$ADMIN_LOGIN" ]; then
+          wp user update "$ADMIN_LOGIN" --user_pass=admin --path="$WP_DIR"
+          echo "    Admin login: $ADMIN_LOGIN / admin"
+        fi
 
         # 6 — Rewrite rules
         echo "==> [6/7] Flushing rewrite rules..."
