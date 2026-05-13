@@ -212,6 +212,22 @@
   transform: translateY(-7px) rotate(-45deg);
 }
 
+/* ── Per-comment hide ───────────────────────────────────────────────────────── */
+.comment-hidden-by-admin {
+  border-left: 3px solid #bbb;
+  padding-left: 8px;
+}
+
+.comment-members-only {
+  font-style: italic;
+  color: #888;
+}
+
+.comment-members-only-view .reply {
+  display: none;
+}
+
+
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   html, body {

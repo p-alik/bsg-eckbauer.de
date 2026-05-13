@@ -134,11 +134,33 @@ WordPress and requires no special setup.
 
 ```
 themes/eckbauer/
-├── style.css       ← Child theme header + CSS overrides
-└── functions.php   ← Enqueues parent + child stylesheets
+├── style.css            ← Child theme header + CSS overrides
+├── functions.php        ← Theme logic (see features below)
+├── header.php           ← Custom site header
+└── comments-hidden.php  ← Shown to guests when all post comments are restricted
 ```
 
-Add custom JS by enqueuing it from `functions.php`.
+### Features
+
+#### Members-only comments (post level)
+
+A metabox "Kommentare" in the post editor lets editors hide **all** comments on a post
+from guests. Guests see `comments-hidden.php` ("Kommentare sind nur für angemeldete
+Benutzer sichtbar") instead of the comment section.
+
+#### Per-comment visibility (comment level)
+
+Individual comments can be hidden from guests without hiding the whole thread:
+
+- **Existing comment** — open `WP Admin → Comments → Edit` and check
+  **"Für Gäste ausblenden"** in the *Sichtbarkeit* metabox, then save.
+- **New comment** — check **"Für Gäste ausblenden"** in the *Kommentar hinzufügen*
+  form at the bottom of the post editor before submitting.
+
+Guests see the comment author and date but the body is replaced with
+*"Dieser Kommentar ist nur für angemeldete Klubmitglieder sichtbar"*.
+Moderators see the full text with a gray left border as indicator.
+The post's WP-Optimize page cache is purged automatically on save.
 
 ### Deployment
 
