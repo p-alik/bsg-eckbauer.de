@@ -113,6 +113,19 @@ add_filter( 'get_comments_number', function ( $count, $post_id ) {
     return $count;
 }, 10, 2 );
 
+// ── TinyMCE table support ─────────────────────────────────────────────────────
+// WP 6.x ships TinyMCE 4.9.11 without the table plugin; load it from the theme.
+
+add_filter( 'mce_external_plugins', function ( $plugins ) {
+    $plugins['table'] = get_stylesheet_directory_uri() . '/assets/tinymce-table/plugin.min.js';
+    return $plugins;
+} );
+
+add_filter( 'mce_buttons_3', function ( $buttons ) {
+    array_unshift( $buttons, 'table' );
+    return $buttons;
+} );
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 add_action( 'wp_enqueue_scripts', function () {
