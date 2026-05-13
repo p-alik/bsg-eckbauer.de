@@ -134,11 +134,22 @@ WordPress and requires no special setup.
 
 ```
 themes/eckbauer/
-├── style.css       ← Child theme header + CSS overrides
-└── functions.php   ← Enqueues parent + child stylesheets
+├── style.css                          ← Child theme header + CSS overrides
+├── functions.php                      ← Theme hooks (see below)
+├── comments-hidden.php                ← Placeholder shown instead of comments for guests
+└── assets/
+    └── tinymce-table/
+        └── plugin.min.js              ← TinyMCE 4.9.11 table plugin (not bundled in WP 6.x)
 ```
 
-Add custom JS by enqueuing it from `functions.php`.
+### functions.php responsibilities
+
+| Feature | Hook |
+|---|---|
+| Enqueue parent (Twenty Ten) + child stylesheets | `wp_enqueue_scripts` |
+| Mobile nav toggle + submenu expand buttons | `wp_footer` |
+| Hide comments from guests on marked posts | `add_meta_boxes`, `save_post`, `comments_template`, `comments_array`, `get_comments_number` |
+| TinyMCE table button in the classic editor | `mce_external_plugins`, `mce_buttons_3` |
 
 ### Deployment
 
@@ -147,6 +158,18 @@ nix run .#theme-zip   # → eckbauer.zip
 ```
 
 Upload `eckbauer.zip` via **WP Admin → Appearance → Themes → Add New → Upload Theme**.
+
+---
+
+## Licensing
+
+| Component | License |
+|---|---|
+| Theme — Eckbauer (child of Twenty Ten) | [GPL 2.0 or later](https://www.gnu.org/licenses/gpl-2.0.html) — inherited from the Twenty Ten parent theme |
+| Plugin — chess-tournament | [GPL 2.0 or later](https://www.gnu.org/licenses/gpl-2.0.html) — WordPress plugins must be GPL-compatible |
+| `themes/eckbauer/assets/tinymce-table/plugin.min.js` | [LGPL 2.1](https://www.gnu.org/licenses/lgpl-2.1.html) — TinyMCE 4.9.11, © Tiny Technologies, Inc. Source: [github.com/tinymce/tinymce/tree/4.9.11](https://github.com/tinymce/tinymce/tree/4.9.11) |
+
+LGPL 2.1 is GPL-compatible; the two licenses coexist without conflict.
 
 ---
 
