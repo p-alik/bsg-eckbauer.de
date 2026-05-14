@@ -243,6 +243,7 @@ add_action( 'wp_enqueue_scripts', function () {
     wp_enqueue_style(
         'eckbauer-style',
         get_stylesheet_uri(),
-        [ 'twentyten-style' ]
+        [ 'twentyten-style' ],
+        wp_get_theme()->get( 'Version' )
     );
 } );
