@@ -151,7 +151,9 @@
         THEME_LINK="$WP_DIR/wp-content/themes/eckbauer"
         THEME_SRC="$REPO_ROOT/themes/eckbauer"
 
-        if [ ! -L "$THEME_LINK" ]; then
+        if [ -d "$THEME_LINK" ] && [ ! -L "$THEME_LINK" ]; then
+          echo "==> Skipping symlink: $THEME_LINK is a real directory"
+        elif [ ! -L "$THEME_LINK" ]; then
           echo "==> Symlinking eckbauer child theme..."
           rm -rf "$THEME_LINK"
           ln -sf "$THEME_SRC" "$THEME_LINK"
