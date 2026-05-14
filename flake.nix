@@ -38,6 +38,9 @@
       if ($uri !== '/' && file_exists($file) && !is_dir($file)) {
           return false; // serve static files as-is
       }
+      if (is_dir($file) && file_exists(rtrim($file, '/') . '/index.php')) {
+          return false; // let PHP built-in server handle real directories (e.g. /wp-admin/)
+      }
       require_once __DIR__ . '/index.php';
     '';
 
