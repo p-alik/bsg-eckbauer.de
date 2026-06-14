@@ -177,11 +177,38 @@
   color: #fff;
 }
 
-/* ── Hamburger button ───────────────────────────────────────────────────────── */
-/* Both are mobile-only — hidden on desktop */
+/* ── Hamburger / sidebar toggle buttons ─────────────────────────────────────── */
+/* All mobile-only — hidden on desktop */
 .menu-toggle,
-.submenu-toggle {
+.submenu-toggle,
+.sidebar-toggle {
   display: none;
+}
+
+/* ── Sidebar toggle ─────────────────────────────────────────────────────────── */
+.sidebar-toggle {
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: var(--charcoal);
+  color: #e8e0cc;
+  border: none;
+  cursor: pointer;
+  padding: 10px 14px;
+  font-size: 13px;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.sidebar-toggle:hover {
+  background: var(--gold-dark);
+  color: var(--charcoal);
+}
+
+.sidebar-toggle-icon {
+  font-size: 20px;
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .menu-toggle {
@@ -267,7 +294,16 @@
   #main {
     width: 100% !important;
     padding: 20px 0 0 !important;
+    /* Flex column lets us reorder sidebar toggle to appear before #container */
+    display: flex !important;
+    flex-direction: column;
   }
+
+  /* Reorder: toggle + sidebar appear above the main content */
+  .sidebar-toggle { order: 1; }
+  #primary        { order: 2; }
+  #container      { order: 3; }
+  #secondary      { order: 4; }
 
   #content {
     margin: 0 !important;
@@ -362,12 +398,26 @@
     flex-shrink: 0;
   }
 
+  /* Show sidebar toggle button on mobile */
+  .sidebar-toggle {
+    display: flex;
+  }
+
   /* Stack the two-column layout (content + sidebar) */
   #content,
   #primary,
   #secondary {
     float: none !important;
     width: 100% !important;
+  }
+
+  /* Hide primary sidebar by default; reveal via JS toggle */
+  #primary {
+    display: none;
+  }
+
+  #primary.sidebar-open {
+    display: block;
   }
 
   #secondary {

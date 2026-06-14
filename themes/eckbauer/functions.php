@@ -58,6 +58,22 @@ add_action( 'wp_footer', function () { ?>
 </script>
 <?php } );
 
+add_action( 'wp_footer', function () { ?>
+<script>
+(function() {
+  var toggle  = document.querySelector('.sidebar-toggle');
+  var sidebar = document.getElementById('primary');
+  if (!toggle || !sidebar) return;
+
+  toggle.addEventListener('click', function() {
+    var open = sidebar.classList.toggle('sidebar-open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.querySelector('.sidebar-toggle-icon').textContent = open ? '−' : '+';
+  });
+})();
+</script>
+<?php } );
+
 // ── Members-only comments ─────────────────────────────────────────────────────
 
 add_action( 'add_meta_boxes', function () {
