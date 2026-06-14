@@ -137,10 +137,23 @@ themes/eckbauer/
 ├── style.css            ← Child theme header + CSS overrides
 ├── functions.php        ← Theme logic (see features below)
 ├── header.php           ← Custom site header
+├── sidebar.php          ← Injects mobile sidebar toggle before #primary widget area
+├── CHANGELOG.md         ← Version history
 └── comments-hidden.php  ← Shown to guests when all post comments are restricted
 ```
 
 ### Features
+
+#### Mobile sidebar toggle
+
+On viewports ≤ 768 px the `#primary` widget area (right sidebar) is hidden behind a
+full-width **"Seitenleiste"** button that appears directly below the navigation bar.
+Tapping the button expands the sidebar above the article list. A `+` / `−` icon
+indicates the open/closed state.
+
+The button is injected by `sidebar.php`; the toggle behaviour is wired up via JS in
+`functions.php`; CSS `flexbox order` is used to pull the button visually above the
+`#container` even though `get_sidebar()` is called after it in the template.
 
 #### Members-only comments (post level)
 
@@ -169,6 +182,9 @@ nix run .#theme-zip   # → eckbauer.zip
 ```
 
 Upload `eckbauer.zip` via **WP Admin → Appearance → Themes → Add New → Upload Theme**.
+When WordPress asks *"A newer version is already installed. Replace current with uploaded?"*,
+click **Replace current with uploaded** — the upload confirmation screen alone does not
+overwrite the live files.
 
 ---
 
