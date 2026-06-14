@@ -2,6 +2,21 @@
 add_action( 'wp_footer', function () { ?>
 <script>
 (function() {
+  // Wrap each TablePress table in a scrollable div so wide tables scroll
+  // horizontally instead of being clipped by #main { overflow:hidden }.
+  document.querySelectorAll('.tablepress').forEach(function(table) {
+    var div = document.createElement('div');
+    div.className = 'tablepress-scroll-wrapper';
+    table.parentNode.insertBefore(div, table);
+    div.appendChild(table);
+  });
+})();
+</script>
+<?php } );
+
+add_action( 'wp_footer', function () { ?>
+<script>
+(function() {
   var toggle = document.querySelector('.menu-toggle');
   var nav    = document.querySelector('#access .menu-header');
   if (!toggle || !nav) return;

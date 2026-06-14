@@ -228,6 +228,23 @@
 }
 
 
+/* ── TablePress: horizontal scroll ─────────────────────────────────────────── */
+/* TablePress inline CSS sets table-layout:fixed + white-space:nowrap + overflow:hidden
+   on these classes, which causes columns to be clipped when the table is wider than
+   the content column.  Let columns size to their content instead, and scroll. */
+.besten6,
+.besten4,
+.tablepress-fame,
+.tablepress-vorstand {
+  table-layout: auto !important;
+  overflow: visible !important;
+}
+
+.tablepress-scroll-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   html, body {
