@@ -1,5 +1,10 @@
 # Changelog — Eckbauer Theme
 
+## 1.2.1 — 2026-07-11
+
+### Fixed
+- Hidden comments (per-comment "Für Gäste ausblenden" toggle) are now visible to any logged-in member, not just editors/admins with `moderate_comments`.
+
 ## 1.2.0 — 2026-06-14
 
 ### Added
