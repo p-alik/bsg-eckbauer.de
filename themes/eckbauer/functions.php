@@ -246,7 +246,7 @@ add_filter( 'comment_text', function ( $text, $comment ) {
     if ( get_comment_meta( (int) $comment->comment_ID, '_comment_hidden', true ) !== '1' ) {
         return $text;
     }
-    if ( current_user_can( 'moderate_comments' ) ) {
+    if ( is_user_logged_in() ) {
         return $text;
     }
     return '<p class="comment-members-only">'
@@ -258,7 +258,7 @@ add_filter( 'comment_class', function ( $classes, $class, $comment_id ) {
     if ( get_comment_meta( $comment_id, '_comment_hidden', true ) !== '1' ) {
         return $classes;
     }
-    $classes[] = current_user_can( 'moderate_comments' )
+    $classes[] = is_user_logged_in()
         ? 'comment-hidden-by-admin'
         : 'comment-members-only-view';
     return $classes;
